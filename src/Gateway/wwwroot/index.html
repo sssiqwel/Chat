@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Чат</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #f2f6ff;
+    --soft: #d7e4ff;
+    --hint: #f6d48a;
+    --line: #35558f;
+    --paper: #0b1f4d;
+    --card: #14306a;
+    --danger: #ff9a9a;
+    --field: #f4f7fb;
+    --field-ink: #141820;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    font-size: 18px;
+    line-height: 1.45;
+    color: var(--ink);
+    background: #0b1f4d;
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 20px 48px;
+  }
+  header h1 {
+    margin: 0 0 6px;
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 44px;
+    font-weight: 600;
+    color: #f7f9ff;
+  }
+  header p { margin: 0; color: var(--soft); max-width: 62ch; font-size: 19px; }
+  .who { margin-top: 10px; font-weight: 600; }
+  .gate {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    margin-top: 22px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 18px;
+    margin-top: 22px;
+  }
+  [hidden] { display: none !important; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .bar button { margin-top: 0; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  h2 {
+    margin: 0 0 12px;
+    font-size: 21px;
+    color: #f7f9ff;
+  }
+  form, .stack { display: flex; flex-direction: column; gap: 0; }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 16px;
+    color: var(--soft);
+  }
+  form button { margin-top: 14px; align-self: flex-start; }
+  input, textarea, button {
+    font: inherit;
+  }
+  input, textarea {
+    width: 100%;
+    border: 1px solid #c5ceda;
+    background: var(--field);
+    color: var(--field-ink);
+    color-scheme: light;
+    border-radius: 10px;
+    padding: 9px 10px;
+  }
+  input::placeholder, textarea::placeholder { color: #5c6774; }
+  textarea { min-height: 74px; resize: vertical; }
+  button,
+  button.quiet,
+  button.room {
+    border: 1px solid #d0d0d0;
+    border-radius: 999px;
+    padding: 9px 14px;
+    background: #ffffff;
+    color: #111111;
+    color-scheme: light;
+  }
+  button:hover:not(:disabled),
+  button.quiet:hover:not(:disabled),
+  button.room:hover:not(:disabled) {
+    background: #f3f3f3;
+    color: #111111;
+  }
+  button.soft {
+    background: #e4ebe7;
+    color: #31443a;
+    border-color: #c5d2ca;
+  }
+  button.soft:hover:not(:disabled) {
+    background: #d7e2db;
+    color: #31443a;
+  }
+  button:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .block + .block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .rooms { display: flex; flex-direction: column; gap: 18px; }
+  .room,
+  button.room {
+    text-align: left;
+    width: 100%;
+    background: #e4ebe7;
+    color: #31443a;
+    border-color: #c5d2ca;
+  }
+  .room small { color: #31443a; font-size: 15px; }
+  button.room:hover:not(:disabled) {
+    background: #d7e2db;
+    color: #31443a;
+  }
+  .note {
+    margin: 12px 0 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #e4ebe7;
+    color: #31443a;
+    font-weight: 600;
+  }
+  .hint { color: var(--hint); font-size: 15px; }
+  .avatar-preview {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #efe4d4;
+  }
+  .avatar-preview { display: none; margin-top: 8px; }
+  .journal {
+    margin-top: 18px;
+  }
+  #log {
+    margin: 0;
+    min-height: 120px;
+    max-height: 280px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  #log .bad { color: var(--danger); font-weight: 600; }
+  @media (max-width: 860px) {
+    .gate, .grid, .split { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Чат</h1>
+    <p id="intro">Сначала регистрация или вход. После входа на этой же странице откроются профиль и чаты. Разговор — в отдельном окне. Для второго человека нужно отдельное окно, не копия вкладки.</p>
+    <p class="who" id="who">Вы не вошли.</p>
+  </header>
+  <div id="gate" class="gate">
+    <section>
+      <div class="block">
+        <h2>Регистрация</h2>
+        <form id="register">
+          <label>Имя<input name="displayName" required maxlength="80"></label>
+          <label>Почта, можно настоящую или вымышленную<input name="email" type="text" inputmode="email" autocomplete="email" required maxlength="200" placeholder="anna@example.com" pattern="[^\s@]+@[^\s@]+\.[^\s@]+" title="Форма: имя@домен.зона"></label>
+          <label>Пароль<input name="password" type="password" required minlength="4" maxlength="200"></label>
+          <button type="submit">Создать учётную запись</button>
+        </form>
+        <p class="note" id="registerNote" hidden></p>
+      </div>
+    </section>
+    <section>
+      <div class="block">
+        <h2>Вход</h2>
+        <form id="login">
+          <label>Почта, можно настоящую или вымышленную<input name="email" type="text" inputmode="email" autocomplete="email" required maxlength="200" placeholder="anna@example.com" pattern="[^\s@]+@[^\s@]+\.[^\s@]+" title="Форма: имя@домен.зона"></label>
+          <label>Пароль<input name="password" type="password" required maxlength="200"></label>
+          <button type="submit">Войти</button>
+        </form>
+        <p class="note" id="loginNote" hidden></p>
+      </div>
+    </section>
+  </div>
+  <div id="home" class="grid" hidden>
+    <section>
+      <div class="block">
+        <h2>Профиль и аватар</h2>
+        <form id="profile">
+          <label>Имя<input name="displayName" maxlength="80" required></label>
+          <button class="soft" type="submit">Сохранить имя</button>
+        </form>
+        <form id="avatar">
+          <label>Выберите свой аватар<input name="file" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required></label>
+          <button class="soft" type="submit">Загрузить аватар</button>
+        </form>
+        <img id="avatarPreview" class="avatar-preview" alt="Аватар">
+        <div class="bar">
+          <button type="button" id="logout">Выйти</button>
+          <button class="soft" type="button" id="other">Окно для другого человека</button>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="split">
+        <form id="create">
+          <h2>Новый чат</h2>
+          <label>Название<input name="title" required maxlength="120"></label>
+          <button class="soft" type="submit">Создать чат</button>
+        </form>
+        <form id="join">
+          <h2>Вступление</h2>
+          <label>Идентификатор чата<input name="roomId" required></label>
+          <button class="soft" type="submit">Вступить</button>
+        </form>
+      </div>
+      <div class="block">
+        <h2>Мои чаты</h2>
+        <p class="hint">Нажатие на чат открывает разговор. Страница с профилем остаётся открытой.</p>
+        <div id="rooms" class="rooms"><p class="hint">Чатов пока нет.</p></div>
+      </div>
+    </section>
+  </div>
+  <section class="journal">
+    <h2>Ответы сервера</h2>
+    <p class="hint">Здесь видны и ошибки, и пустой ответ.</p>
+    <pre id="log">Журнал пуст.</pre>
+  </section>
+</main>
+<script>
+(function () {
+  if (new URLSearchParams(location.search).get("fresh") === "1") {
+    sessionStorage.removeItem("token");
+    history.replaceState(null, "", location.pathname);
+  }
+  var logBox = document.getElementById("log");
+  var started = false;
+  var opened = {};
+  var emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+  function trimmed(value) {
+    return (value || "").replace(/^\s+|\s+$/g, "");
+  }
+
+  function emailOk(value) {
+    var email = trimmed(value);
+    return email.length > 0 && email.length <= 200 && emailPattern.test(email);
+  }
+
+  function fileOk(file) {
+    if (!file || !file.size || file.size > 2 * 1024 * 1024) return false;
+    return /\.(png|jpg|jpeg|gif|webp)$/i.test(file.name || "");
+  }
+
+  function lockSubmit(form, ready) {
+    var button = form.querySelector("button[type=submit]");
+    function sync() {
+      button.disabled = !ready();
+    }
+    form.addEventListener("input", sync);
+    form.addEventListener("change", sync);
+    form.syncSubmit = sync;
+    sync();
+  }
+
+  function blocked(event) {
+    var button = event.target.querySelector("button[type=submit]");
+    return !button || button.disabled;
+  }
+
+  function windowName(id) {
+    return "chat" + String(id).replace(/[^A-Za-z0-9_-]/g, "");
+  }
+
+  function takeWindow(name) {
+    var existing = opened[name];
+    if (existing && !existing.closed) {
+      try { existing.sessionStorage.setItem("token", token()); } catch (ignore) {}
+      return existing;
+    }
+    var child = window.open("", name);
+    if (!child) {
+      log("—", "/room", "окно", "Браузер не открыл новое окно. Нажмите ссылку «Открыть чат».");
+      return null;
+    }
+    try { child.sessionStorage.setItem("token", token()); } catch (ignore) {}
+    opened[name] = child;
+    return child;
+  }
+
+  function isBlank(child) {
+    try { return child.location.href === "about:blank"; }
+    catch (ignore) { return false; }
+  }
+
+  function roomUrl(id) {
+    var url = "/room?id=" + encodeURIComponent(id);
+    var value = token();
+    if (value) url += "#token=" + encodeURIComponent(value);
+    return url;
+  }
+
+  function showChatLink(id) {
+    var box = document.getElementById("chatLink");
+    if (!box) {
+      box = document.createElement("p");
+      box.id = "chatLink";
+      box.className = "hint";
+      document.getElementById("rooms").before(box);
+    }
+    box.textContent = "";
+    var link = document.createElement("a");
+    link.href = roomUrl(id);
+    link.target = "_blank";
+    link.textContent = "Открыть чат";
+    box.appendChild(link);
+  }
+
+  function revealRoom(child, id) {
+    if (!child) {
+      showChatLink(id);
+      return;
+    }
+    try { child.sessionStorage.setItem("token", token()); } catch (ignore) {}
+    child.location.href = roomUrl(id);
+    child.focus();
+  }
+
+  function log(method, url, status, text) {
+    if (!started) {
+      logBox.textContent = "";
+      started = true;
+    }
+    var line = document.createElement("div");
+    var body = "пустой ответ";
+    if (text && text.length) {
+      try { body = JSON.stringify(JSON.parse(text), null, 2); }
+      catch (ignore) { body = text; }
+    }
+    line.textContent = method + " " + url + " → " + status + "\n" + body;
+    if (Number(status) >= 400 || status === "сеть") line.className = "bad";
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function token() {
+    return sessionStorage.getItem("token") || "";
+  }
+
+  async function call(method, url, options) {
+    options = options || {};
+    var headers = Object.assign({}, options.headers || {});
+    if (token()) headers.Authorization = "Bearer " + token();
+    var response;
+    try {
+      response = await fetch(url, { method: method, headers: headers, body: options.body });
+    } catch (error) {
+      log(method, url, "сеть", String(error));
+      return null;
+    }
+    var text = await response.text();
+    log(method, url, String(response.status), text);
+    var data = null;
+    if (text) {
+      try { data = JSON.parse(text); } catch (ignore) { data = null; }
+    }
+    return { status: response.status, text: text, data: data };
+  }
+
+  function jsonCall(method, url, payload) {
+    return call(method, url, {
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {})
+    });
+  }
+
+  function showAvatar(url) {
+    var img = document.getElementById("avatarPreview");
+    if (!url) {
+      img.style.display = "none";
+      img.removeAttribute("src");
+      return;
+    }
+    img.src = url + "?v=" + Date.now();
+    img.style.display = "block";
+  }
+
+  function showStage(inside) {
+    document.getElementById("gate").hidden = inside;
+    document.getElementById("home").hidden = !inside;
+    document.getElementById("intro").textContent = inside
+      ? "Имя и аватар настраиваются здесь. Чат открывается отдельным окном и не закрывает эту страницу. «Окно для другого человека» даёт второй вход."
+      : "Сначала регистрация или вход. После входа на этой же странице откроются профиль и чаты. Разговор — в отдельном окне. Для второго человека нужно отдельное окно, не копия вкладки.";
+  }
+
+  async function refreshMe() {
+    var who = document.getElementById("who");
+    if (!token()) {
+      who.textContent = "Вы не вошли.";
+      showAvatar("");
+      showStage(false);
+      return;
+    }
+    var me = await call("GET", "/api/me");
+    if (!me || !me.data || me.status !== 200) {
+      who.textContent = "Сеанс не подтверждён.";
+      showStage(false);
+      return;
+    }
+    who.textContent = "Вы вошли: " + me.data.displayName + " (" + me.data.email + ")";
+    showStage(true);
+    document.querySelector("#profile [name=displayName]").value = me.data.displayName || "";
+    document.getElementById("profile").syncSubmit();
+    showAvatar(me.data.avatarUrl || "");
+  }
+
+  function renderRooms(items) {
+    var box = document.getElementById("rooms");
+    box.innerHTML = "";
+    if (!items || !items.length) {
+      box.innerHTML = "<p class='hint'>Чатов пока нет.</p>";
+      return;
+    }
+    items.forEach(function (item) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "room quiet";
+      button.innerHTML = "";
+      var title = document.createElement("div");
+      title.textContent = item.title;
+      var meta = document.createElement("small");
+      meta.textContent = item.id + " · участников: " + item.memberCount;
+      button.appendChild(title);
+      button.appendChild(meta);
+      button.addEventListener("click", function () {
+        document.querySelector("#join [name=roomId]").value = item.id;
+        document.getElementById("join").syncSubmit();
+        var named = windowName(item.id);
+        var existing = opened[named];
+        if (existing && !existing.closed) {
+          revealRoom(existing, item.id);
+          return;
+        }
+        var child = window.open(roomUrl(item.id), named);
+        if (!child) {
+          log("—", "/room", "окно", "Браузер не открыл новое окно. Нажмите ссылку «Открыть чат».");
+          showChatLink(item.id);
+          return;
+        }
+        try { child.sessionStorage.setItem("token", token()); } catch (ignore) {}
+        opened[named] = child;
+      });
+      box.appendChild(button);
+    });
+  }
+
+  async function refreshRooms() {
+    if (!token()) {
+      renderRooms([]);
+      return;
+    }
+    var result = await call("GET", "/api/rooms");
+    if (!result || result.status !== 200 || !Array.isArray(result.data)) {
+      if (result && result.status === 200 && !result.text) {
+        document.getElementById("rooms").textContent = "пустой ответ";
+      }
+      return;
+    }
+    if (!result.data.length) renderRooms([]);
+    else renderRooms(result.data);
+  }
+
+  document.getElementById("register").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (blocked(event)) return;
+    var form = event.target;
+    form.email.value = trimmed(form.email.value);
+    form.displayName.value = trimmed(form.displayName.value);
+    var result = await jsonCall("POST", "/api/register", {
+      displayName: form.displayName.value,
+      email: form.email.value,
+      password: form.password.value
+    });
+    if (result && result.status === 201) {
+      document.querySelector("#login [name=email]").value = form.email.value;
+      document.querySelector("#login [name=password]").value = form.password.value;
+      document.getElementById("login").syncSubmit();
+      var created = document.getElementById("registerNote");
+      created.hidden = false;
+      created.textContent = "Учётная запись создана";
+    }
+  });
+
+  document.getElementById("login").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (blocked(event)) return;
+    var form = event.target;
+    form.email.value = trimmed(form.email.value);
+    var result = await jsonCall("POST", "/api/login", {
+      email: form.email.value,
+      password: form.password.value
+    });
+    if (result && result.status === 200 && result.data && result.data.token) {
+      sessionStorage.setItem("token", result.data.token);
+      var accountName = result.data.displayName || form.email.value;
+      var accountEmail = result.data.email || form.email.value;
+      var entered = document.getElementById("loginNote");
+      entered.hidden = false;
+      entered.textContent = "Вы вошли: " + accountName + " (" + accountEmail + ")";
+      await refreshMe();
+      await refreshRooms();
+    }
+  });
+
+  document.getElementById("profile").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (blocked(event)) return;
+    var form = event.target;
+    form.displayName.value = trimmed(form.displayName.value);
+    var result = await jsonCall("PATCH", "/api/me", { displayName: form.displayName.value });
+    if (result && result.status === 200) await refreshMe();
+  });
+
+  document.getElementById("avatar").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (blocked(event)) return;
+    var input = event.target.file;
+    if (!input.files || !fileOk(input.files[0])) return;
+    var data = new FormData();
+    data.append("file", input.files[0]);
+    var result = await call("POST", "/api/me/avatar", { body: data });
+    if (result && result.status === 200) await refreshMe();
+  });
+
+  document.getElementById("create").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (blocked(event)) return;
+    var form = event.target;
+    form.title.value = trimmed(form.title.value);
+    var pending = "chatnew" + Date.now();
+    var child = takeWindow(pending);
+    var result = await jsonCall("POST", "/api/rooms", { title: form.title.value });
+    if (result && result.status === 201 && result.data && result.data.id) {
+      if (child) opened[windowName(result.data.id)] = child;
+      delete opened[pending];
+      document.querySelector("#join [name=roomId]").value = result.data.id;
+      document.getElementById("join").syncSubmit();
+      await refreshRooms();
+      revealRoom(child, result.data.id);
+    } else if (child && isBlank(child)) {
+      child.close();
+      delete opened[pending];
+    }
+  });
+
+  document.getElementById("join").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (blocked(event)) return;
+    var id = trimmed(event.target.roomId.value);
+    event.target.roomId.value = id;
+    if (!id) return;
+    var pending = "chatjoin" + Date.now();
+    var child = takeWindow(pending);
+    var result = await jsonCall("POST", "/api/rooms/" + encodeURIComponent(id) + "/join", {});
+    if (result && (result.status === 200 || result.status === 201)) {
+      var stable = windowName(id);
+      var existing = opened[stable];
+      if (existing && !existing.closed && existing !== child) {
+        if (child && isBlank(child)) child.close();
+        delete opened[pending];
+        revealRoom(existing, id);
+      } else if (child) {
+        opened[stable] = child;
+        delete opened[pending];
+        revealRoom(child, id);
+      }
+      await refreshRooms();
+    } else if (child && isBlank(child)) {
+      child.close();
+      delete opened[pending];
+    }
+  });
+
+  lockSubmit(document.getElementById("register"), function () {
+    var form = document.getElementById("register");
+    var name = trimmed(form.displayName.value);
+    var password = form.password.value;
+    return name.length > 0 && name.length <= 80 && emailOk(form.email.value) && password.length >= 4 && password.length <= 200;
+  });
+  lockSubmit(document.getElementById("login"), function () {
+    var form = document.getElementById("login");
+    var password = form.password.value;
+    return emailOk(form.email.value) && password.length > 0 && password.length <= 200;
+  });
+  lockSubmit(document.getElementById("profile"), function () {
+    var name = trimmed(document.querySelector("#profile [name=displayName]").value);
+    return name.length > 0 && name.length <= 80;
+  });
+  lockSubmit(document.getElementById("avatar"), function () {
+    var input = document.querySelector("#avatar [name=file]");
+    return !!(input.files && fileOk(input.files[0]));
+  });
+  lockSubmit(document.getElementById("create"), function () {
+    var title = trimmed(document.querySelector("#create [name=title]").value);
+    return title.length > 0 && title.length <= 120;
+  });
+  lockSubmit(document.getElementById("join"), function () {
+    return trimmed(document.querySelector("#join [name=roomId]").value).length > 0;
+  });
+
+  document.getElementById("logout").addEventListener("click", function () {
+    sessionStorage.removeItem("token");
+    document.getElementById("loginNote").hidden = true;
+    document.getElementById("loginNote").textContent = "";
+    document.getElementById("who").textContent = "Вы не вошли.";
+    showAvatar("");
+    renderRooms([]);
+    showStage(false);
+  });
+
+  document.getElementById("other").addEventListener("click", function () {
+    var child = window.open("/?fresh=1", "otherperson");
+    if (!child) {
+      log("—", "/", "окно", "Браузер не открыл окно для другого человека. Разрешите всплывающие окна.");
+    }
+  });
+
+  refreshMe();
+  refreshRooms();
+})();
+</script>
+</body>
+</html>

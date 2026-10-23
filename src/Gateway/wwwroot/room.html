@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Чат</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #2c3330;
+    --soft: #4e5b54;
+    --hint: #5c6b64;
+    --line: #d5ddd8;
+    --paper: #f3f5f4;
+    --card: #fbfcfb;
+    --danger: #8f3d3d;
+    --field: #ffffff;
+    --field-ink: #2c3330;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    font-size: 18px;
+    line-height: 1.45;
+    color: var(--ink);
+    background-color: #e4ebe7;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.7) 0 18%, transparent 19%),
+      radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.45) 0 22%, transparent 23%),
+      radial-gradient(circle at 70% 92%, rgba(196, 210, 202, 0.55) 0 26%, transparent 27%),
+      radial-gradient(circle at 8% 78%, rgba(214, 224, 218, 0.8) 0 16%, transparent 17%),
+      linear-gradient(165deg, #f7f8f7 0%, #e7eeea 48%, #d5e0da 100%);
+    background-attachment: fixed;
+  }
+  main {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 28px 20px 48px;
+  }
+  header h1 {
+    margin: 0 0 6px;
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 40px;
+    font-weight: 600;
+    color: #3e4a44;
+  }
+  header p { margin: 0; color: var(--soft); }
+  .who { margin-top: 10px; font-weight: 600; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    margin-top: 18px;
+  }
+  h2 {
+    margin: 0 0 4px;
+    font-size: 21px;
+    color: #3e4a44;
+  }
+  form { display: flex; flex-direction: column; }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 16px;
+    color: var(--soft);
+  }
+  input, textarea, button { font: inherit; }
+  textarea {
+    width: 100%;
+    margin-top: 0;
+    border: 1px solid #c5ceda;
+    background: var(--field);
+    color: var(--field-ink);
+    color-scheme: light;
+    border-radius: 10px;
+    padding: 9px 10px;
+    min-height: 74px;
+    resize: vertical;
+  }
+  textarea::placeholder { color: #5c6774; }
+  button, button.quiet {
+    border: 1px solid #c9d4cd;
+    border-radius: 999px;
+    padding: 9px 14px;
+    background: #e7eeea;
+    color: #31443a;
+    color-scheme: light;
+  }
+  form button { margin-top: 14px; align-self: flex-start; }
+  button:hover:not(:disabled),
+  button.quiet:hover:not(:disabled) {
+    background: #dce5e0;
+    color: #31443a;
+  }
+  button:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+  .history, .members { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .msg, .member {
+    border: 1px solid #e1e7e3;
+    border-radius: 12px;
+    padding: 8px 10px;
+    background: #ffffff;
+    color: #2c3330;
+  }
+  .msg { display: grid; grid-template-columns: 42px 1fr; gap: 10px; align-items: center; }
+  .msg img, .letter {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e7eeea;
+  }
+  .letter { display: grid; place-items: center; font-weight: 700; }
+  .msg time { color: #5c6b64; font-size: 15px; }
+  .hint { color: var(--hint); font-size: 15px; }
+  .note {
+    margin: 12px 0 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #e7eeea;
+    color: #31443a;
+    font-weight: 600;
+    transition: opacity 0.45s ease;
+  }
+  .note.is-leaving { opacity: 0; }
+  #refresh { margin-top: 12px; }
+  .journal { margin-top: 18px; }
+  #log {
+    margin: 12px 0 0;
+    min-height: 80px;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  #log .bad { color: var(--danger); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title">Чат</h1>
+    <p id="roomMeta">Окно входа остаётся открытым отдельно.</p>
+    <p class="who" id="who">Проверяю сеанс.</p>
+  </header>
+  <section>
+    <h2>Участники</h2>
+    <div id="members" class="members"><p class="hint">Загружаю чат.</p></div>
+  </section>
+  <section>
+    <h2>Сообщение</h2>
+    <form id="send">
+      <label>Текст<textarea name="body" maxlength="2000" required></textarea></label>
+      <button type="submit">Отправить</button>
+    </form>
+  </section>
+  <section>
+    <h2>История</h2>
+    <button class="quiet" id="refresh" type="button">Обновить историю</button>
+    <p class="note" id="historyNote" hidden></p>
+    <div id="history" class="history"><p class="hint">История пуста.</p></div>
+  </section>
+  <section class="journal">
+    <h2>Ответы сервера</h2>
+    <p class="hint">Здесь видны и ошибки, и пустой ответ.</p>
+    <pre id="log">Журнал пуст.</pre>
+  </section>
+</main>
+<script>
+(function () {
+  var passed = new URLSearchParams((location.hash || "").replace(/^#/, "")).get("token");
+  if (passed) {
+    sessionStorage.setItem("token", passed);
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+  var params = new URLSearchParams(location.search);
+  var roomId = (params.get("id") || "").replace(/^\s+|\s+$/g, "");
+  var logBox = document.getElementById("log");
+  var started = false;
+
+  function log(method, url, status, text) {
+    if (!started) {
+      logBox.textContent = "";
+      started = true;
+    }
+    var line = document.createElement("div");
+    var body = "пустой ответ";
+    if (text && text.length) {
+      try { body = JSON.stringify(JSON.parse(text), null, 2); }
+      catch (ignore) { body = text; }
+    }
+    line.textContent = method + " " + url + " → " + status + "\n" + body;
+    if (Number(status) >= 400 || status === "сеть") line.className = "bad";
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function token() {
+    return sessionStorage.getItem("token") || "";
+  }
+
+  function trimmed(value) {
+    return (value || "").replace(/^\s+|\s+$/g, "");
+  }
+
+  async function call(method, url, options) {
+    options = options || {};
+    var headers = Object.assign({}, options.headers || {});
+    if (token()) headers.Authorization = "Bearer " + token();
+    var response;
+    try {
+      response = await fetch(url, { method: method, headers: headers, body: options.body });
+    } catch (error) {
+      log(method, url, "сеть", String(error));
+      return null;
+    }
+    var text = await response.text();
+    log(method, url, String(response.status), text);
+    var data = null;
+    if (text) {
+      try { data = JSON.parse(text); } catch (ignore) { data = null; }
+    }
+    return { status: response.status, text: text, data: data };
+  }
+
+  function jsonCall(method, url, payload) {
+    return call(method, url, {
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {})
+    });
+  }
+
+  async function refreshMe() {
+    var who = document.getElementById("who");
+    if (!token()) {
+      who.textContent = "Вы не вошли. Войдите на странице входа и откройте чат снова.";
+      return;
+    }
+    var me = await call("GET", "/api/me");
+    if (!me || !me.data || me.status !== 200) {
+      who.textContent = "Сеанс не подтверждён.";
+      return;
+    }
+    who.textContent = "Вы вошли: " + me.data.displayName + " (" + me.data.email + ")";
+  }
+
+  function renderMembers(members) {
+    var box = document.getElementById("members");
+    box.innerHTML = "";
+    if (!members || !members.length) {
+      box.innerHTML = "<p class='hint'>Участников нет.</p>";
+      return;
+    }
+    members.forEach(function (member) {
+      var row = document.createElement("div");
+      row.className = "member";
+      row.textContent = (member.displayName || "Неизвестный") + " · " + member.userId;
+      box.appendChild(row);
+    });
+  }
+
+  function renderHistory(items) {
+    var box = document.getElementById("history");
+    box.innerHTML = "";
+    if (!items || !items.length) {
+      box.innerHTML = "<p class='hint'>История пуста.</p>";
+      return;
+    }
+    items.forEach(function (item) {
+      var row = document.createElement("article");
+      row.className = "msg";
+      var author = item.author || {};
+      if (author.avatarUrl) {
+        var img = document.createElement("img");
+        img.src = author.avatarUrl;
+        img.alt = author.displayName || "";
+        row.appendChild(img);
+      } else {
+        var letter = document.createElement("span");
+        letter.className = "letter";
+        letter.textContent = (author.displayName || "?").slice(0, 1);
+        row.appendChild(letter);
+      }
+      var text = document.createElement("div");
+      var name = document.createElement("strong");
+      name.textContent = author.displayName || "Неизвестный";
+      var body = document.createElement("div");
+      body.textContent = item.body || "";
+      var time = document.createElement("time");
+      time.textContent = item.createdUtc || "";
+      text.appendChild(name);
+      text.appendChild(body);
+      text.appendChild(time);
+      row.appendChild(text);
+      box.appendChild(row);
+    });
+  }
+
+  async function loadRoom() {
+    if (!roomId) {
+      document.getElementById("title").textContent = "Чат не выбран";
+      document.getElementById("members").innerHTML = "<p class='hint'>Откройте чат со страницы входа.</p>";
+      document.getElementById("history").innerHTML = "<p class='hint'>История пуста.</p>";
+      return false;
+    }
+    var room = await call("GET", "/api/rooms/" + encodeURIComponent(roomId));
+    if (room && room.data && room.status === 200) {
+      document.getElementById("title").textContent = room.data.title || "Чат";
+      document.getElementById("roomMeta").textContent = "Идентификатор: " + (room.data.id || roomId) + ". Окно входа остаётся открытым отдельно.";
+      renderMembers(room.data.members || []);
+    }
+    var history = await call("GET", "/api/rooms/" + encodeURIComponent(roomId) + "/messages");
+    if (!history) return false;
+    if (history.status === 200 && !history.text) {
+      document.getElementById("history").textContent = "пустой ответ";
+      return true;
+    }
+    if (history.status === 200 && Array.isArray(history.data)) {
+      renderHistory(history.data);
+      return true;
+    }
+    return false;
+  }
+
+  var sendForm = document.getElementById("send");
+  var sendButton = sendForm.querySelector("button[type=submit]");
+  function syncSend() {
+    var text = trimmed(sendForm.body.value);
+    sendButton.disabled = !roomId || !token() || text.length === 0 || text.length > 2000;
+  }
+  sendForm.addEventListener("input", syncSend);
+  sendForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    syncSend();
+    if (sendButton.disabled) return;
+    var text = trimmed(sendForm.body.value);
+    var result = await jsonCall("POST", "/api/rooms/" + encodeURIComponent(roomId) + "/messages", { body: text });
+    if (result && result.status === 201) {
+      sendForm.body.value = "";
+      syncSend();
+      await loadRoom();
+    }
+  });
+
+  var historyTimer = 0;
+  document.getElementById("refresh").addEventListener("click", async function () {
+    var note = document.getElementById("historyNote");
+    var ok = await loadRoom();
+    window.clearTimeout(historyTimer);
+    note.classList.remove("is-leaving");
+    if (!ok) {
+      note.hidden = true;
+      note.textContent = "";
+      return;
+    }
+    note.hidden = false;
+    note.textContent = "История обновлена";
+    historyTimer = window.setTimeout(function () {
+      note.classList.add("is-leaving");
+      historyTimer = window.setTimeout(function () {
+        note.hidden = true;
+        note.textContent = "";
+        note.classList.remove("is-leaving");
+      }, 450);
+    }, 2200);
+  });
+  syncSend();
+  refreshMe().then(function () {
+    syncSend();
+    return loadRoom();
+  });
+})();
+</script>
+</body>
+</html>
